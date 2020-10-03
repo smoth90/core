@@ -2,7 +2,8 @@
 from datetime import timedelta
 import logging
 
-import Adafruit_DHT  # pylint: disable=import-error
+# import Adafruit_DHT  # pylint: disable=import-error
+import adafruit_dht
 import voluptuous as vol
 
 from homeassistant.components.sensor import PLATFORM_SCHEMA
@@ -59,9 +60,9 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
 
     SENSOR_TYPES[SENSOR_TEMPERATURE][1] = hass.config.units.temperature_unit
     available_sensors = {
-        "AM2302": Adafruit_DHT.AM2302,
-        "DHT11": Adafruit_DHT.DHT11,
-        "DHT22": Adafruit_DHT.DHT22,
+        "AM2302": adafruit_dht.DHT22,  # with adafruit-circuitpython-dht AM2302 uses same class of DHT22
+        "DHT11": adafruit_dht.DHT11,
+        "DHT22": adafruit_dht.DHT22,
     }
     sensor = available_sensors.get(config[CONF_SENSOR])
     pin = config[CONF_PIN]
@@ -72,7 +73,7 @@ def setup_platform(hass, config, add_entities, discovery_info=None):
         _LOGGER.error("DHT sensor type is not supported")
         return False
 
-    data = DHTClient(Adafruit_DHT, sensor, pin)
+    data = DHTClient(sensor, pin)
     dev = []
     name = config[CONF_NAME]
 
@@ -160,9 +161,8 @@ class DHTSensor(Entity):
 class DHTClient:
     """Get the latest data from the DHT sensor."""
 
-    def __init__(self, adafruit_dht, sensor, pin):
+    def __init__(self, sensor, pin):
         """Initialize the sensor."""
-        self.adafruit_dht = adafruit_dht
         self.sensor = sensor
         self.pin = pin
         self.data = {}
@@ -170,7 +170,8 @@ class DHTClient:
     @Throttle(MIN_TIME_BETWEEN_UPDATES)
     def update(self):
         """Get the latest data the DHT sensor."""
-        humidity, temperature = self.adafruit_dht.read_retry(self.sensor, self.pin)
+        humidity = self.sensor(self.pin).humidity
+        temperature = self.sensor(self.pin).humidity
         if temperature:
             self.data[SENSOR_TEMPERATURE] = temperature
         if humidity:
